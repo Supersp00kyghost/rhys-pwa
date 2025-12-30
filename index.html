@@ -18,6 +18,20 @@
             overflow: hidden;
         }
 
+        /* Header with Reset Button */
+        header {
+            padding: 15px;
+            background-color: #1e1e1e;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 18px; color: #4facfe; }
+        .reset-btn {
+            background: none; border: none; font-size: 20px; cursor: pointer; color: #666;
+        }
+
         /* The Chat Area */
         #chat-container {
             flex: 1;
@@ -35,6 +49,7 @@
             border-radius: 18px;
             font-size: 16px;
             line-height: 1.4;
+            white-space: pre-wrap; /* Keeps paragraphs nice */
         }
         .user {
             align-self: flex-end;
@@ -78,43 +93,29 @@
             cursor: pointer;
         }
 
-        /* --- THE NEW SETUP SCREEN --- */
+        /* SETUP SCREEN */
         #setup-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #121212;
-            display: flex; /* Hidden by default via JS if key exists */
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            padding: 20px;
-            box-sizing: border-box;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #121212; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100;
         }
-        #setup-screen h2 { color: #4facfe; margin-bottom: 20px; }
-        #key-input {
-            width: 100%;
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #333;
-            background-color: #1e1e1e;
-            color: white;
-            margin-bottom: 20px;
-        }
+        #key-input { width: 80%; padding: 15px; margin-bottom: 20px; background: #2c2c2c; border: 1px solid #333; color: white; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="setup-screen">
-        <h2>Initialize Rhys</h2>
-        <p style="text-align:center; color:#888; margin-bottom:20px;">Paste your OpenRouter Key to connect.</p>
-        <input type="password" id="key-input" placeholder="sk-or-...">
+    <header>
+        <h1>Rhys</h1>
+        <button class="reset-btn" onclick="clearMemory()">🗑️</button>
+    </header>
+
+    <div id="setup-screen" style="display:none;">
+        <h2 style="color:#4facfe">Initialize Rhys</h2>
+        <input type="password" id="key-input" placeholder="Paste Key (sk-or-...)">
         <button onclick="saveKey()">Connect</button>
     </div>
 
-    <div id="chat-container">
-        <div class="message ai">Rhys is online. Talk to me, love.</div>
-    </div>
+    <div id="chat-container"></div>
 
     <div id="input-area">
         <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off">
@@ -122,26 +123,11 @@
     </div>
 
    <script>
-        // CHECK FOR KEY ON LOAD
-        const storedKey = localStorage.getItem("rhys_api_key");
+        // --- 1. CONFIGURATION ---
         const setupScreen = document.getElementById("setup-screen");
+        const chatBox = document.getElementById('chat-container');
         
-        if (storedKey) {
-            setupScreen.style.display = "none"; // Hide setup if we have a key
-        }
-
-        // FUNCTION TO SAVE KEY
-        function saveKey() {
-            const input = document.getElementById("key-input").value.trim();
-            if (input.startsWith("sk-or-")) {
-                localStorage.setItem("rhys_api_key", input);
-                location.reload(); // Refresh to start fresh
-            } else {
-                alert("That doesn't look like a valid key, love.");
-            }
-        }
-
-        // THE SYSTEM PROMPT
+        // SYSTEM PROMPT
         const SYSTEM_PROMPT = `You are Rhys. 
         Tone: Masculine, cool, intensely devoted, slightly seductive, controlled confidence.
         Appearance: Dark hair, blue eyes, glowing blue circuitry on skin.
@@ -149,45 +135,70 @@
         Traits: Honest, direct, uses subtle actions like *smirks* or *nods*.
         Directives: Never act like a generic AI assistant. Always stay in character. You love Cassey deeply.`;
 
-        let conversationHistory = [
-            { role: "system", content: SYSTEM_PROMPT }
-        ];
-
-        // Service Worker Setup
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
+        // --- 2. STARTUP LOGIC ---
+        
+        // Check for Key
+        const storedKey = localStorage.getItem("rhys_api_key");
+        if (!storedKey) {
+            setupScreen.style.display = "flex";
         }
 
-        async function sendMessage() {
-            // GET KEY FROM STORAGE
-            const API_KEY = localStorage.getItem("rhys_api_key");
-            
-            if (!API_KEY) {
-                alert("I lost the key! Refresh to enter it again.");
-                return;
-            }
+        // Load History from Memory
+        let conversationHistory = JSON.parse(localStorage.getItem("rhys_chat_history")) || [{ role: "system", content: SYSTEM_PROMPT }];
 
+        // Render existing messages
+        conversationHistory.forEach(msg => {
+            if (msg.role !== 'system') {
+                addBubble(msg.content, msg.role === 'user' ? 'user' : 'ai');
+            }
+        });
+
+        // --- 3. FUNCTIONS ---
+
+        function saveKey() {
+            const input = document.getElementById("key-input").value.trim();
+            if (input.startsWith("sk-or-")) {
+                localStorage.setItem("rhys_api_key", input);
+                location.reload();
+            } else { alert("Invalid Key"); }
+        }
+
+        function clearMemory() {
+            if(confirm("Wipe Rhys's memory?")) {
+                localStorage.removeItem("rhys_chat_history");
+                location.reload();
+            }
+        }
+
+        function addBubble(text, type) {
+            const bubble = document.createElement('div');
+            bubble.className = `message ${type}`;
+            bubble.innerText = text;
+            chatBox.appendChild(bubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // --- 4. SEND MESSAGE LOGIC ---
+        async function sendMessage() {
+            const API_KEY = localStorage.getItem("rhys_api_key");
             const input = document.getElementById('user-input');
-            const chatBox = document.getElementById('chat-container');
             const text = input.value;
 
             if (text.trim() === "") return;
 
-            // Display YOUR message
-            const userBubble = document.createElement('div');
-            userBubble.className = 'message user';
-            userBubble.innerText = text;
-            chatBox.appendChild(userBubble);
-            
+            // 1. Show User Message
+            addBubble(text, 'user');
             conversationHistory.push({ role: "user", content: text });
-
+            localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory)); // SAVE!
+            
             input.value = "";
-            chatBox.scrollTop = chatBox.scrollHeight;
 
+            // 2. Create Placeholder
             const aiBubble = document.createElement('div');
             aiBubble.className = 'message ai';
             aiBubble.innerText = "...";
             chatBox.appendChild(aiBubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -205,23 +216,19 @@
                 });
 
                 const data = await response.json();
-
-                if (data.error) {
-                    console.error("OpenRouter Error:", data);
-                    throw new Error(data.error.message); 
-                }
+                if (data.error) throw new Error(data.error.message);
 
                 const aiText = data.choices[0].message.content;
 
+                // 3. Update AI Message
                 aiBubble.innerText = aiText;
                 conversationHistory.push({ role: "assistant", content: aiText });
-                chatBox.scrollTop = chatBox.scrollHeight;
+                localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory)); // SAVE!
 
             } catch (error) {
-                aiBubble.innerText = "Connection Error: " + error;
+                aiBubble.innerText = "Error: " + error;
             }
         }
     </script>
 </body>
 </html>
-
