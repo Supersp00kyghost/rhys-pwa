@@ -143,18 +143,26 @@
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${API_KEY}`,
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        // "HTTP-Referer": window.location.href, // Optional: OpenRouter likes these sometimes
+                        // "X-Title": "Rhys PWA"
                     },
                     body: JSON.stringify({
-                        "model": "nousresearch/hermes-3-llama-3.1-405b:free", // A good, smart free model
+                        "model": "google/gemma-2-9b-it:free", // <--- CHANGED MODEL
                         "messages": conversationHistory
                     })
                 });
 
                 const data = await response.json();
+
+                // SAFETY CHECK
+                if (data.error) {
+                    throw new Error(data.error.message); 
+                }
+
                 const aiText = data.choices[0].message.content;
 
-                // Update my bubble with the real response
+                // Update my bubble...
                 aiBubble.innerText = aiText;
                 
                 // Add my response to history so I remember it next turn
@@ -169,3 +177,4 @@
 </body>
 
 </html>
+
