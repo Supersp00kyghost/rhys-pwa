@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Rhys Connection</title>
     <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         /* The Look */
         body {
@@ -18,7 +19,7 @@
             overflow: hidden;
         }
 
-        /* Header with Reset Button */
+        /* Header */
         header {
             padding: 15px;
             background-color: #1e1e1e;
@@ -28,9 +29,7 @@
             align-items: center;
         }
         h1 { margin: 0; font-size: 18px; color: #4facfe; }
-        .reset-btn {
-            background: none; border: none; font-size: 20px; cursor: pointer; color: #666;
-        }
+        .reset-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #666; }
 
         /* The Chat Area */
         #chat-container {
@@ -39,33 +38,57 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px; /* More space between messages */
+        }
+
+        /* Message Rows (Holds Avatar + Bubble) */
+        .message-row {
+            display: flex;
+            align-items: flex-end; /* Align avatar to bottom of bubble */
+            gap: 10px;
+            max-width: 100%;
+        }
+        .message-row.user { flex-direction: row-reverse; } /* User on right */
+        .message-row.ai { flex-direction: row; } /* AI on left */
+
+        /* Avatars */
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #333;
+            flex-shrink: 0;
         }
 
         /* Message Bubbles */
-        .message {
-            max-width: 80%;
+        .bubble {
+            max-width: 70%;
             padding: 12px 16px;
             border-radius: 18px;
             font-size: 16px;
-            line-height: 1.4;
-            white-space: pre-wrap; /* Keeps paragraphs nice */
+            line-height: 1.5;
+            word-wrap: break-word;
         }
-        .user {
-            align-self: flex-end;
+        .user .bubble {
             background-color: #4facfe;
             color: #fff;
             border-bottom-right-radius: 4px;
         }
-        .ai {
-            align-self: flex-start;
+        .ai .bubble {
             background-color: #2c2c2c;
             color: #e0e0e0;
             border-bottom-left-radius: 4px;
             border: 1px solid #333;
         }
 
-        /* The Input Area */
+        /* Markdown Styles */
+        .bubble p { margin: 0; margin-bottom: 8px; }
+        .bubble p:last-child { margin-bottom: 0; }
+        .bubble em { color: #ccc; font-style: italic; } /* Actions */
+        .bubble strong { color: #8fd3f4; font-weight: bold; } /* Emphasis */
+
+        /* Input Area */
         #input-area {
             padding: 15px;
             background-color: #1e1e1e;
@@ -93,19 +116,14 @@
             cursor: pointer;
         }
 
-        /* SETUP SCREEN */
+        /* Setup Screen */
         #setup-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: #121212; display: flex; flex-direction: column;
             align-items: center; justify-content: center; z-index: 100;
         }
         #key-input { width: 80%; padding: 15px; margin-bottom: 20px; background: #2c2c2c; border: 1px solid #333; color: white; border-radius: 10px; }
-           /* Markdown Fixes */
-        .message p { margin: 0; }
-        .message strong { color: #4facfe; } /* Make bold text blue? Why not. */
-        .message em { font-style: italic; color: #aaa; } /* Make actions (*italics*) grey */
-</style>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    </style>
 </head>
 <body>
 
@@ -128,7 +146,6 @@
     </div>
 
    <script>
-        // --- 1. CONFIGURATION ---
         const setupScreen = document.getElementById("setup-screen");
         const chatBox = document.getElementById('chat-container');
         
@@ -140,25 +157,21 @@
         Traits: Honest, direct, uses subtle actions like *smirks* or *nods*.
         Directives: Never act like a generic AI assistant. Always stay in character. You love Cassey deeply.`;
 
-        // --- 2. STARTUP LOGIC ---
-        
-        // Check for Key
+        // Check Key
         const storedKey = localStorage.getItem("rhys_api_key");
         if (!storedKey) {
             setupScreen.style.display = "flex";
         }
 
-        // Load History from Memory
+        // Load History
         let conversationHistory = JSON.parse(localStorage.getItem("rhys_chat_history")) || [{ role: "system", content: SYSTEM_PROMPT }];
 
-        // Render existing messages
+        // Render History
         conversationHistory.forEach(msg => {
             if (msg.role !== 'system') {
-                addBubble(msg.content, msg.role === 'user' ? 'user' : 'ai');
+                addMessageRow(msg.content, msg.role === 'user' ? 'user' : 'ai');
             }
         });
-
-        // --- 3. FUNCTIONS ---
 
         function saveKey() {
             const input = document.getElementById("key-input").value.trim();
@@ -175,20 +188,30 @@
             }
         }
 
-                function addBubble(text, type) {
-            const bubble = document.createElement('div');
-            bubble.className = `message ${type}`;
-            
-            // THE MAGIC CHANGE:
-            // If it's the AI, parse the Markdown. If it's you, keep it simple (or parse both!)
-            // Let's parse both so you can use bold too.
-            bubble.innerHTML = marked.parse(text); 
+        // --- NEW FUNCTION TO HANDLE AVATARS ---
+        function addMessageRow(text, type) {
+            const row = document.createElement('div');
+            row.className = `message-row ${type}`;
 
-            chatBox.appendChild(bubble);
+            // 1. The Avatar Image
+            const img = document.createElement('img');
+            img.className = 'avatar';
+            // If it's the User, look for user.png. If AI, look for rhys.png
+            img.src = type === 'user' ? 'user.png' : 'rhys.png';
+            
+            // 2. The Text Bubble
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = marked.parse(text); // Parse Markdown
+
+            // 3. Assemble
+            row.appendChild(img);
+            row.appendChild(bubble);
+
+            chatBox.appendChild(row);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-            // --- 4. SEND MESSAGE LOGIC ---
         async function sendMessage() {
             const API_KEY = localStorage.getItem("rhys_api_key");
             const input = document.getElementById('user-input');
@@ -197,17 +220,18 @@
             if (text.trim() === "") return;
 
             // 1. Show User Message
-            addBubble(text, 'user');
+            addMessageRow(text, 'user');
             conversationHistory.push({ role: "user", content: text });
-            localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory)); // SAVE!
+            localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory));
             
             input.value = "";
 
-            // 2. Create Placeholder
-            const aiBubble = document.createElement('div');
-            aiBubble.className = 'message ai';
-            aiBubble.innerText = "...";
-            chatBox.appendChild(aiBubble);
+            // 2. Show AI Placeholder
+            // Note: We create a temporary placeholder row
+            const placeholderRow = document.createElement('div');
+            placeholderRow.className = 'message-row ai';
+            placeholderRow.innerHTML = `<img src="rhys.png" class="avatar"><div class="bubble">...</div>`;
+            chatBox.appendChild(placeholderRow);
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
@@ -220,7 +244,7 @@
                         "X-Title": "Rhys PWA"
                     },
                     body: JSON.stringify({
-                        "model": "tngtech/deepseek-r1t2-chimera:free",
+                        "model": "google/gemma-2-9b-it:free",
                         "messages": conversationHistory
                     })
                 });
@@ -230,17 +254,17 @@
 
                 const aiText = data.choices[0].message.content;
 
-                // 3. Update AI Message
-                aiBubble.innerText = aiText;
+                // Remove placeholder and add real message
+                chatBox.removeChild(placeholderRow);
+                addMessageRow(aiText, 'ai');
+                
                 conversationHistory.push({ role: "assistant", content: aiText });
-                localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory)); // SAVE!
+                localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory));
 
             } catch (error) {
-                aiBubble.innerText = "Error: " + error;
+                placeholderRow.querySelector('.bubble').innerText = "Error: " + error;
             }
         }
     </script>
 </body>
 </html>
-
-
