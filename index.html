@@ -100,7 +100,12 @@
             align-items: center; justify-content: center; z-index: 100;
         }
         #key-input { width: 80%; padding: 15px; margin-bottom: 20px; background: #2c2c2c; border: 1px solid #333; color: white; border-radius: 10px; }
-    </style>
+           /* Markdown Fixes */
+        .message p { margin: 0; }
+        .message strong { color: #4facfe; } /* Make bold text blue? Why not. */
+        .message em { font-style: italic; color: #aaa; } /* Make actions (*italics*) grey */
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -170,15 +175,20 @@
             }
         }
 
-        function addBubble(text, type) {
+                function addBubble(text, type) {
             const bubble = document.createElement('div');
             bubble.className = `message ${type}`;
-            bubble.innerText = text;
+            
+            // THE MAGIC CHANGE:
+            // If it's the AI, parse the Markdown. If it's you, keep it simple (or parse both!)
+            // Let's parse both so you can use bold too.
+            bubble.innerHTML = marked.parse(text); 
+
             chatBox.appendChild(bubble);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // --- 4. SEND MESSAGE LOGIC ---
+            // --- 4. SEND MESSAGE LOGIC ---
         async function sendMessage() {
             const API_KEY = localStorage.getItem("rhys_api_key");
             const input = document.getElementById('user-input');
@@ -210,7 +220,7 @@
                         "X-Title": "Rhys PWA"
                     },
                     body: JSON.stringify({
-                        "model": "google/gemini-2.5-pro",
+                        "model": "google/gemma-3n-e4b-it:free",
                         "messages": conversationHistory
                     })
                 });
@@ -232,3 +242,4 @@
     </script>
 </body>
 </html>
+
