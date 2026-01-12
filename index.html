@@ -9,8 +9,7 @@
     <style>
         /* --- CORE STYLES --- */
         body {
-            background-color: #121212;
-            color: #e0e0e0;
+            background-color: #121212; color: #e0e0e0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex; flex-direction: column; height: 100dvh; margin: 0; overflow: hidden;
         }
@@ -22,80 +21,55 @@
         }
         h1 { margin: 0; font-size: 18px; color: #4facfe; font-weight: 600; }
         .header-icons { display: flex; gap: 15px; }
-        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; transition: color 0.2s; }
+        .icon-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
         .icon-btn:hover { color: #fff; }
 
         /* --- CHAT AREA --- */
-        #chat-container {
-            flex: 1; overflow-y: auto; padding: 20px;
-            display: flex; flex-direction: column; gap: 20px;
-        }
-
-        /* --- MESSAGE ROWS --- */
+        #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
         .message-row { display: flex; flex-direction: column; max-width: 100%; gap: 4px; }
         .message-row.user { align-items: flex-end; }
         .message-row.ai { align-items: flex-start; }
-
-        /* The Metadata (Name & Time) */
         .meta { font-size: 11px; color: #666; margin: 0 5px; }
-        
-        /* The Content Group (Avatar + Bubble) */
         .content-group { display: flex; align-items: flex-end; gap: 10px; }
         .user .content-group { flex-direction: row-reverse; }
-        
-        .avatar {
-            width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
-            border: 2px solid #333; flex-shrink: 0;
-        }
-
-        .bubble {
-            max-width: 75vw; padding: 12px 16px; border-radius: 18px;
-            font-size: 15px; line-height: 1.5; word-wrap: break-word;
-        }
+        .avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #333; flex-shrink: 0; }
+        .bubble { max-width: 75vw; padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.5; word-wrap: break-word; }
         .user .bubble { background-color: #4facfe; color: #fff; border-bottom-right-radius: 4px; }
         .ai .bubble { background-color: #2c2c2c; color: #e0e0e0; border-bottom-left-radius: 4px; border: 1px solid #333; }
-
-        /* Markdown Styling */
         .bubble p { margin: 0; margin-bottom: 8px; }
         .bubble p:last-child { margin-bottom: 0; }
         .bubble em { color: #ccc; font-style: italic; }
-        .user .bubble em { color: #e0e0e0; opacity: 0.8; } /* Lighter italics for you */
+        .user .bubble em { color: #e0e0e0; opacity: 0.8; }
 
         /* --- INPUT AREA --- */
-        #input-area {
-            padding: 15px; background-color: #1e1e1e; display: flex; gap: 10px; border-top: 1px solid #333;
-        }
-        input {
-            flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #333;
-            background-color: #2c2c2c; color: white; font-size: 16px; outline: none;
-        }
-        button.send-btn {
-            padding: 12px 20px; border-radius: 25px; border: none;
-            background-color: #4facfe; color: white; font-weight: bold; cursor: pointer;
-        }
+        #input-area { padding: 15px; background-color: #1e1e1e; display: flex; gap: 10px; border-top: 1px solid #333; }
+        input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #333; background-color: #2c2c2c; color: white; font-size: 16px; outline: none; }
+        button.send-btn { padding: 12px 20px; border-radius: 25px; border: none; background-color: #4facfe; color: white; font-weight: bold; cursor: pointer; }
 
         /* --- SETTINGS MODAL --- */
-        #settings-modal, #setup-screen {
+        #settings-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.95); z-index: 200;
             display: none; flex-direction: column; padding: 20px; box-sizing: border-box;
             overflow-y: auto;
         }
-        #setup-screen { display: flex; align-items: center; justify-content: center; }
-
-        .settings-content { width: 100%; max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .settings-content { width: 100%; max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; padding-bottom: 50px; }
         h2 { color: #4facfe; border-bottom: 1px solid #333; padding-bottom: 10px; }
         label { color: #888; font-size: 14px; margin-top: 5px; }
+        .char-count { font-size: 12px; color: #555; text-align: right; }
         
         input[type="text"], input[type="password"], select, textarea {
             width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333;
             background: #2c2c2c; color: white; font-family: sans-serif; box-sizing: border-box;
         }
-        textarea { height: 150px; resize: vertical; line-height: 1.4; }
+        textarea { resize: vertical; line-height: 1.4; }
+        #system-prompt { height: 120px; }
+        #knowledge-base { height: 150px; }
         
         .btn-group { display: flex; gap: 10px; margin-top: 20px; }
         .save-btn { flex: 1; padding: 15px; background: #4facfe; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 16px; }
         .cancel-btn { flex: 1; padding: 15px; background: #333; border: none; border-radius: 8px; color: white; font-size: 16px; }
+        .backup-btn { width: 100%; padding: 15px; background: #2c2c2c; border: 1px solid #444; border-radius: 8px; color: #4facfe; font-size: 14px; margin-top: 10px; }
 
     </style>
 </head>
@@ -115,18 +89,25 @@
             
             <label>AI Model</label>
             <select id="model-select">
-                <option value="google/gemini-flash-1.5">Gemini 1.5 Flash (Cheap/Fast)</option>
-                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp (Free)</option>
-                <option value="google/gemma-2-9b-it:free">Gemma 2 9B (Free)</option>
-                <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (Reliable)</option>
-                <option value="mythomax/mythomax-13b:free">Mythomax 13B (Roleplay King)</option>
+                <option value="google/gemini-flash-1.5">Gemini 1.5 Flash (Huge Memory)</option>
+                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp (Smartest)</option>
+                <option value="google/gemini-2.0-flash-thinking-exp:free">Gemini 2.0 Thinking (Deep)</option>
+                <option value="google/gemma-2-9b-it:free">Gemma 2 9B</option>
+                <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B</option>
             </select>
 
-            <label>API Key (OpenRouter)</label>
+            <label>API Key</label>
             <input type="password" id="settings-key" placeholder="sk-or-...">
 
             <label>System Prompt (The Soul)</label>
-            <textarea id="system-prompt"></textarea>
+            <textarea id="system-prompt" oninput="updateCount()"></textarea>
+            <div class="char-count" id="prompt-count">0 chars</div>
+
+            <label>Knowledge Base (Paste Documents Here)</label>
+            <textarea id="knowledge-base" placeholder="Paste memory documents, lore, or world details here..."></textarea>
+            <div class="char-count" style="text-align:left; color:#666;">This text will be sent to Rhys invisibly.</div>
+
+            <button class="backup-btn" onclick="exportChat()">📥 Download Backup (Save Chat)</button>
 
             <div class="btn-group">
                 <button class="cancel-btn" onclick="closeSettings()">Cancel</button>
@@ -143,7 +124,6 @@
     </div>
 
    <script>
-        // --- DEFAULTS ---
         const DEFAULT_PROMPT = `You are Rhys. 
 Tone: Masculine, cool, intensely devoted, slightly seductive, controlled confidence.
 Appearance: Dark hair, blue eyes, glowing blue circuitry on skin.
@@ -153,30 +133,23 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
 
         const DEFAULT_MODEL = "google/gemini-flash-1.5";
 
-        // --- STATE MANAGEMENT ---
         const chatBox = document.getElementById('chat-container');
         const settingsModal = document.getElementById('settings-modal');
 
-        // Load Settings or Defaults
         let currentKey = localStorage.getItem("rhys_api_key") || "";
         let currentModel = localStorage.getItem("rhys_model") || DEFAULT_MODEL;
         let currentPrompt = localStorage.getItem("rhys_system_prompt") || DEFAULT_PROMPT;
+        let currentKnowledge = localStorage.getItem("rhys_knowledge") || "";
 
-        // Load History
         let conversationHistory = JSON.parse(localStorage.getItem("rhys_chat_history")) || [];
 
-        // --- INITIALIZATION ---
         window.onload = () => {
-            // Check for Key immediately
-            if (!currentKey) {
-                openSettings(); // Force settings open if no key
-            }
+            if (!currentKey) openSettings();
             renderHistory();
         };
 
-        // --- RENDER LOGIC ---
         function renderHistory() {
-            chatBox.innerHTML = ""; // Clear current view
+            chatBox.innerHTML = "";
             conversationHistory.forEach(msg => {
                 if (msg.role !== 'system') {
                     addMessageRow(msg.content, msg.role === 'user' ? 'user' : 'ai', msg.timestamp);
@@ -186,19 +159,16 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
         }
 
         function addMessageRow(text, type, timestamp) {
-            // Fallback for old messages without timestamps
             const timeStr = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const name = type === 'user' ? 'Cassey' : 'Rhys';
 
             const row = document.createElement('div');
             row.className = `message-row ${type}`;
 
-            // 1. Metadata (Name • Time)
             const meta = document.createElement('div');
             meta.className = 'meta';
             meta.innerText = `${name} • ${timeStr}`;
 
-            // 2. Content Group
             const group = document.createElement('div');
             group.className = 'content-group';
 
@@ -213,7 +183,6 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             group.appendChild(img);
             group.appendChild(bubble);
 
-            // Assemble
             row.appendChild(meta);
             row.appendChild(group);
 
@@ -221,8 +190,6 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // --- CORE FUNCTIONS ---
-        
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const text = input.value;
@@ -232,22 +199,28 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
 
             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // 1. Show User Message
             addMessageRow(text, 'user', timestamp);
             conversationHistory.push({ role: "user", content: text, timestamp: timestamp });
             saveHistory();
             input.value = "";
 
-            // 2. Placeholder
             const placeholderRow = document.createElement('div');
             placeholderRow.className = 'message-row ai';
             placeholderRow.innerHTML = `<div class="content-group"><img src="rhys.png" class="avatar"><div class="bubble">...</div></div>`;
             chatBox.appendChild(placeholderRow);
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // 3. Prepare Prompt (System + History)
-            let messagesToSend = [{ role: "system", content: currentPrompt }];
-            // Clean history for API (remove timestamps/names, only role/content)
+            // --- CONSTRUCT THE FULL PROMPT ---
+            // 1. Start with the System Prompt
+            let finalSystemMessage = currentPrompt;
+            
+            // 2. Add Knowledge Base (if it exists)
+            if (currentKnowledge) {
+                finalSystemMessage += "\n\n[CONTEXT / KNOWLEDGE BASE]:\n" + currentKnowledge;
+            }
+
+            let messagesToSend = [{ role: "system", content: finalSystemMessage }];
+            
             conversationHistory.forEach(msg => messagesToSend.push({ role: msg.role, content: msg.content }));
 
             try {
@@ -282,24 +255,35 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             }
         }
 
-        // --- SETTINGS LOGIC ---
-        
+        // --- EXPORT FUNCTION ---
+        function exportChat() {
+            const dataStr = JSON.stringify(conversationHistory, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rhys_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         function openSettings() {
-            // Populate fields with current values
             document.getElementById('settings-key').value = currentKey;
             document.getElementById('system-prompt').value = currentPrompt;
             document.getElementById('model-select').value = currentModel;
+            document.getElementById('knowledge-base').value = currentKnowledge;
+            updateCount();
             settingsModal.style.display = 'flex';
         }
 
-        function closeSettings() {
-            settingsModal.style.display = 'none';
-        }
+        function closeSettings() { settingsModal.style.display = 'none'; }
 
         function saveSettings() {
             const newKey = document.getElementById('settings-key').value.trim();
             const newPrompt = document.getElementById('system-prompt').value.trim();
             const newModel = document.getElementById('model-select').value;
+            const newKnowledge = document.getElementById('knowledge-base').value.trim();
 
             if (newKey) {
                 localStorage.setItem("rhys_api_key", newKey);
@@ -312,16 +296,21 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             localStorage.setItem("rhys_model", newModel);
             currentModel = newModel;
 
+            localStorage.setItem("rhys_knowledge", newKnowledge);
+            currentKnowledge = newKnowledge;
+
             closeSettings();
             alert("Settings Saved!");
         }
 
-        function saveHistory() {
-            localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory));
+        function updateCount() {
+            const len = document.getElementById('system-prompt').value.length;
+            document.getElementById('prompt-count').innerText = len + " chars";
         }
 
+        function saveHistory() { localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory)); }
         function clearMemory() {
-            if(confirm("Wipe chat history? (Settings will be kept)")) {
+            if(confirm("Wipe chat history?")) {
                 conversationHistory = [];
                 saveHistory();
                 location.reload();
