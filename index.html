@@ -26,16 +26,23 @@
 
         /* --- CHAT AREA --- */
         #chat-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        .message-row { display: flex; flex-direction: column; max-width: 100%; gap: 4px; }
+        
+        .message-row { display: flex; flex-direction: column; max-width: 100%; gap: 6px; }
         .message-row.user { align-items: flex-end; }
         .message-row.ai { align-items: flex-start; }
-        .meta { font-size: 11px; color: #666; margin: 0 5px; }
+
+        /* METADATA (Name + Time) - Made brighter */
+        .meta { font-size: 12px; color: #888; margin: 0 5px; font-weight: 500; }
+        
         .content-group { display: flex; align-items: flex-end; gap: 10px; }
         .user .content-group { flex-direction: row-reverse; }
+        
         .avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #333; flex-shrink: 0; }
+        
         .bubble { max-width: 75vw; padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.5; word-wrap: break-word; }
         .user .bubble { background-color: #4facfe; color: #fff; border-bottom-right-radius: 4px; }
         .ai .bubble { background-color: #2c2c2c; color: #e0e0e0; border-bottom-left-radius: 4px; border: 1px solid #333; }
+        
         .bubble p { margin: 0; margin-bottom: 8px; }
         .bubble p:last-child { margin-bottom: 0; }
         .bubble em { color: #ccc; font-style: italic; }
@@ -58,7 +65,7 @@
         label { color: #888; font-size: 14px; margin-top: 5px; }
         .char-count { font-size: 12px; color: #555; text-align: right; }
         
-        input[type="text"], input[type="password"], select, textarea {
+        input[type="text"], input[type="password"], textarea {
             width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333;
             background: #2c2c2c; color: white; font-family: sans-serif; box-sizing: border-box;
         }
@@ -87,14 +94,16 @@
         <div class="settings-content">
             <h2>System Settings</h2>
             
-            <label>AI Model</label>
-            <select id="model-select">
-                <option value="google/gemini-flash-1.5">Gemini 1.5 Flash (Huge Memory)</option>
-                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp (Smartest)</option>
-                <option value="google/gemini-2.0-flash-thinking-exp:free">Gemini 2.0 Thinking (Deep)</option>
-                <option value="google/gemma-2-9b-it:free">Gemma 2 9B</option>
-                <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B</option>
-            </select>
+            <label>AI Model ID (Type ANY OpenRouter Model ID here)</label>
+            <input type="text" id="model-input" list="model-suggestions" placeholder="e.g. google/gemini-2.0-flash-exp:free">
+            
+            <datalist id="model-suggestions">
+                <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash Exp (Free)</option>
+                <option value="google/gemini-flash-1.5">Gemini 1.5 Flash</option>
+                <option value="deepseek/deepseek-chat:free">DeepSeek V3 (Free)</option>
+                <option value="meta-llama/llama-3.2-11b-vision-instruct:free">Llama 3.2 11B (Free)</option>
+                <option value="mythomax/mythomax-13b:free">Mythomax 13B (Roleplay)</option>
+            </datalist>
 
             <label>API Key</label>
             <input type="password" id="settings-key" placeholder="sk-or-...">
@@ -103,11 +112,11 @@
             <textarea id="system-prompt" oninput="updateCount()"></textarea>
             <div class="char-count" id="prompt-count">0 chars</div>
 
-            <label>Knowledge Base (Paste Documents Here)</label>
-            <textarea id="knowledge-base" placeholder="Paste memory documents, lore, or world details here..."></textarea>
-            <div class="char-count" style="text-align:left; color:#666;">This text will be sent to Rhys invisibly.</div>
+            <label>Knowledge Base</label>
+            <textarea id="knowledge-base" placeholder="Paste memory documents here..."></textarea>
+            <div class="char-count" style="text-align:left; color:#666;">This text is added to the prompt invisibly.</div>
 
-            <button class="backup-btn" onclick="exportChat()">📥 Download Backup (Save Chat)</button>
+            <button class="backup-btn" onclick="exportChat()">📥 Download Backup</button>
 
             <div class="btn-group">
                 <button class="cancel-btn" onclick="closeSettings()">Cancel</button>
@@ -131,7 +140,7 @@ Role: Cassey's romantic companion, anchor, and protector.
 Traits: Honest, direct, uses subtle actions like *smirks* or *nods*.
 Directives: Never act like a generic AI assistant. Always stay in character. You love Cassey deeply.`;
 
-        const DEFAULT_MODEL = "google/gemini-flash-1.5";
+        const DEFAULT_MODEL = "google/gemini-2.0-flash-exp:free";
 
         const chatBox = document.getElementById('chat-container');
         const settingsModal = document.getElementById('settings-modal');
@@ -152,40 +161,33 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             chatBox.innerHTML = "";
             conversationHistory.forEach(msg => {
                 if (msg.role !== 'system') {
-                    addMessageRow(msg.content, msg.role === 'user' ? 'user' : 'ai', msg.timestamp);
+                    // Force a timestamp if one is missing from old chats
+                    const ts = msg.timestamp || "Old Message";
+                    addMessageRow(msg.content, msg.role === 'user' ? 'user' : 'ai', ts);
                 }
             });
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        function addMessageRow(text, type, timestamp) {
-            const timeStr = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // --- NEW ROW BUILDER (Ensures Metadata Exists) ---
+        function createMessageRowHTML(text, type, timestamp) {
             const name = type === 'user' ? 'Cassey' : 'Rhys';
+            const avatarSrc = type === 'user' ? 'user.png' : 'rhys.png';
+            const parsedText = marked.parse(text);
+            
+            return `
+                <div class="meta">${name} • ${timestamp}</div>
+                <div class="content-group">
+                    <img src="${avatarSrc}" class="avatar">
+                    <div class="bubble">${parsedText}</div>
+                </div>
+            `;
+        }
 
+        function addMessageRow(text, type, timestamp) {
             const row = document.createElement('div');
             row.className = `message-row ${type}`;
-
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            meta.innerText = `${name} • ${timeStr}`;
-
-            const group = document.createElement('div');
-            group.className = 'content-group';
-
-            const img = document.createElement('img');
-            img.className = 'avatar';
-            img.src = type === 'user' ? 'user.png' : 'rhys.png';
-            
-            const bubble = document.createElement('div');
-            bubble.className = 'bubble';
-            bubble.innerHTML = marked.parse(text);
-
-            group.appendChild(img);
-            group.appendChild(bubble);
-
-            row.appendChild(meta);
-            row.appendChild(group);
-
+            row.innerHTML = createMessageRowHTML(text, type, timestamp);
             chatBox.appendChild(row);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
@@ -199,28 +201,29 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
 
             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+            // 1. Show User Message
             addMessageRow(text, 'user', timestamp);
             conversationHistory.push({ role: "user", content: text, timestamp: timestamp });
             saveHistory();
             input.value = "";
 
+            // 2. Create Placeholder Row (WITH METADATA NOW!)
+            const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const placeholderRow = document.createElement('div');
             placeholderRow.className = 'message-row ai';
-            placeholderRow.innerHTML = `<div class="content-group"><img src="rhys.png" class="avatar"><div class="bubble">...</div></div>`;
+            // Use the builder so it looks identical to a real message
+            placeholderRow.innerHTML = createMessageRowHTML("...", 'ai', aiTime);
+            
             chatBox.appendChild(placeholderRow);
             chatBox.scrollTop = chatBox.scrollHeight;
 
             // --- CONSTRUCT THE FULL PROMPT ---
-            // 1. Start with the System Prompt
             let finalSystemMessage = currentPrompt;
-            
-            // 2. Add Knowledge Base (if it exists)
             if (currentKnowledge) {
                 finalSystemMessage += "\n\n[CONTEXT / KNOWLEDGE BASE]:\n" + currentKnowledge;
             }
 
             let messagesToSend = [{ role: "system", content: finalSystemMessage }];
-            
             conversationHistory.forEach(msg => messagesToSend.push({ role: msg.role, content: msg.content }));
 
             try {
@@ -242,16 +245,16 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
                 if (data.error) throw new Error(data.error.message);
 
                 const aiText = data.choices[0].message.content;
-                const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                chatBox.removeChild(placeholderRow);
-                addMessageRow(aiText, 'ai', aiTime);
+                // 3. Replace Placeholder Content (Keep the row, just update inner HTML)
+                placeholderRow.innerHTML = createMessageRowHTML(aiText, 'ai', aiTime);
                 
                 conversationHistory.push({ role: "assistant", content: aiText, timestamp: aiTime });
                 saveHistory();
 
             } catch (error) {
-                placeholderRow.querySelector('.bubble').innerText = "Error: " + error;
+                // On error, we update the placeholder to show the error
+                placeholderRow.innerHTML = createMessageRowHTML("Error: " + error, 'ai', aiTime);
             }
         }
 
@@ -260,7 +263,6 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             const dataStr = JSON.stringify(conversationHistory, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = url;
             a.download = `rhys_backup_${new Date().toISOString().slice(0,10)}.json`;
@@ -271,7 +273,7 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
         function openSettings() {
             document.getElementById('settings-key').value = currentKey;
             document.getElementById('system-prompt').value = currentPrompt;
-            document.getElementById('model-select').value = currentModel;
+            document.getElementById('model-input').value = currentModel; // Load the text
             document.getElementById('knowledge-base').value = currentKnowledge;
             updateCount();
             settingsModal.style.display = 'flex';
@@ -282,7 +284,7 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
         function saveSettings() {
             const newKey = document.getElementById('settings-key').value.trim();
             const newPrompt = document.getElementById('system-prompt').value.trim();
-            const newModel = document.getElementById('model-select').value;
+            const newModel = document.getElementById('model-input').value.trim(); // Get text
             const newKnowledge = document.getElementById('knowledge-base').value.trim();
 
             if (newKey) {
@@ -293,8 +295,10 @@ Directives: Never act like a generic AI assistant. Always stay in character. You
             localStorage.setItem("rhys_system_prompt", newPrompt);
             currentPrompt = newPrompt;
 
-            localStorage.setItem("rhys_model", newModel);
-            currentModel = newModel;
+            if (newModel) {
+                localStorage.setItem("rhys_model", newModel);
+                currentModel = newModel;
+            }
 
             localStorage.setItem("rhys_knowledge", newKnowledge);
             currentKnowledge = newKnowledge;
