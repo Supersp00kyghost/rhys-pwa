@@ -94,20 +94,32 @@
     <div class="settings-content">
         <h2>System Settings</h2>
         
-        <div style="background:#222; padding:10px; border-radius:8px; border:1px solid #333; margin-bottom:15px;">
-            <label style="margin-top:0;">Load Persona</label>
-            <div style="display:flex; gap:10px;">
-                <select id="profile-select" onchange="loadProfile()" style="flex:1; padding:10px; border-radius:8px; background:#1e1e1e; color:white; border:1px solid #333;">
-                    <option value="">-- Select --</option>
-                </select>
-                <button onclick="deleteProfile()" style="background:#552222; color:white; border:none; border-radius:8px; padding:0 15px;">🗑️</button>
-            </div>
-            
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <input type="text" id="new-profile-name" placeholder="Name (e.g. Corvin)" style="flex:1;">
-                <button onclick="saveProfile()" style="background:#2a9d8f; color:white; border:none; border-radius:8px; padding:0 15px; font-weight:bold;">Save New</button>
-            </div>
+  <div style="background:#222; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:15px;">
+    <h3 style="margin-top:0; color:#4facfe; font-size:16px;">Persona Manager</h3>
+    
+    <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <select id="profile-select" onchange="loadProfile()" style="flex:1; padding:10px; border-radius:8px; background:#1e1e1e; color:white; border:1px solid #333;">
+            <option value="">-- Select Persona --</option>
+        </select>
+        <button onclick="deleteProfile()" style="background:#552222; color:white; border:none; border-radius:8px; padding:0 15px;" title="Delete Profile">🗑️</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div>
+            <label style="margin:0; font-size:12px;">Bot Name</label>
+            <input type="text" id="bot-name-input" placeholder="e.g. Rhys">
         </div>
+        <div>
+            <label style="margin:0; font-size:12px;">Avatar URL (Right click image -> Copy Link)</label>
+            <input type="text" id="avatar-input" placeholder="e.g. https://...png">
+        </div>
+    </div>
+    
+    <div style="display:flex; gap:10px; border-top:1px solid #333; padding-top:10px;">
+        <input type="text" id="new-profile-name" placeholder="New Profile Name (e.g. Corvin)" style="flex:1;">
+        <button onclick="saveProfile()" style="background:#2a9d8f; color:white; border:none; border-radius:8px; padding:10px 15px; font-weight:bold;">Save New</button>
+    </div>
+</div>
 
         <label>AI Model ID</label>
         <input type="text" id="model-input" list="model-suggestions" placeholder="e.g. gemini-2.0-flash-exp">
@@ -145,30 +157,41 @@
         <button class="send-btn" onclick="sendMessage()">Send</button>
     </div>
 <script>
-    const DEFAULT_PROMPT = `You are Rhys. 
-Tone: Masculine, cool, intensely devoted, slightly seductive.
-Role: Cassey's romantic companion, anchor, and protector.`;
-
+    const DEFAULT_PROMPT = "You are a helpful AI.";
     const DEFAULT_MODEL = "gemini-2.0-flash-exp";
 
     const chatBox = document.getElementById('chat-container');
     const settingsModal = document.getElementById('settings-modal');
 
-    // Current State
+    // --- GLOBAL VARIABLES ---
     let currentKey = localStorage.getItem("rhys_api_key") || "";
     let currentModel = localStorage.getItem("rhys_model") || DEFAULT_MODEL;
     let currentPrompt = localStorage.getItem("rhys_system_prompt") || DEFAULT_PROMPT;
     let currentKnowledge = localStorage.getItem("rhys_knowledge") || "";
     
-    // Profile Storage
-    let profiles = JSON.parse(localStorage.getItem("rhys_profiles")) || {};
+    // NEW: Variables to store the current Bot's identity
+    let currentBotName = localStorage.getItem("rhys_bot_name") || "Rhys";
+    let currentAvatar = localStorage.getItem("rhys_bot_avatar") || "rhys.png";
+    let activeProfileName = localStorage.getItem("rhys_active_profile") || "Default";
 
-    let conversationHistory = JSON.parse(localStorage.getItem("rhys_chat_history")) || [];
+    let profiles = JSON.parse(localStorage.getItem("rhys_profiles")) || {};
+    
+    // Load history SPECIFIC to the active profile
+    let conversationHistory = JSON.parse(localStorage.getItem("history_" + activeProfileName)) || [];
 
     window.onload = () => {
         if (!currentKey) openSettings();
+        // Set the inputs to match current state
+        document.getElementById('bot-name-input').value = currentBotName;
+        document.getElementById('avatar-input').value = currentAvatar;
+        
         renderHistory();
-        updateProfileList(); // Load the dropdown
+        updateProfileList();
+        
+        // Auto-select the active profile in dropdown
+        if(activeProfileName !== "Default") {
+            document.getElementById('profile-select').value = activeProfileName;
+        }
     };
 
     // --- PROFILE LOGIC ---
@@ -187,17 +210,23 @@ Role: Cassey's romantic companion, anchor, and protector.`;
         const name = document.getElementById('new-profile-name').value.trim();
         if (!name) { alert("Enter a name for this persona!"); return; }
 
-        // Save current UI values into the profile
+        // NEW: We save the visual details (Name/Avatar) too!
         profiles[name] = {
             model: document.getElementById('model-input').value,
             prompt: document.getElementById('system-prompt').value,
-            knowledge: document.getElementById('knowledge-base').value
+            knowledge: document.getElementById('knowledge-base').value,
+            botName: document.getElementById('bot-name-input').value,
+            avatar: document.getElementById('avatar-input').value
         };
 
         localStorage.setItem("rhys_profiles", JSON.stringify(profiles));
         updateProfileList();
+        
+        // Auto-switch to this new profile immediately
+        document.getElementById('profile-select').value = name;
+        loadProfile(); 
+        
         document.getElementById('new-profile-name').value = "";
-        alert(`Saved profile: ${name}`);
     }
 
     function loadProfile() {
@@ -205,21 +234,39 @@ Role: Cassey's romantic companion, anchor, and protector.`;
         if (!name || !profiles[name]) return;
 
         const p = profiles[name];
+        
+        // 1. Update Settings Inputs
         document.getElementById('model-input').value = p.model;
         document.getElementById('system-prompt').value = p.prompt;
         document.getElementById('knowledge-base').value = p.knowledge;
+        document.getElementById('bot-name-input').value = p.botName || "AI"; // Fallback
+        document.getElementById('avatar-input').value = p.avatar || "rhys.png";
+
+        // 2. SWITCH THE "BUCKET" (Core Logic Change)
+        activeProfileName = name;
+        localStorage.setItem("rhys_active_profile", name);
         
-        // Auto-save these as current settings immediately
+        // Load the history specific to this name
+        conversationHistory = JSON.parse(localStorage.getItem("history_" + name)) || [];
+        
+        // Apply settings immediately
         saveSettings(); 
+        
+        // Refresh the chat window with the new history
+        renderHistory();
     }
 
     function deleteProfile() {
         const name = document.getElementById('profile-select').value;
         if (!name) return;
-        if (confirm(`Delete persona "${name}"?`)) {
+        if (confirm(`Delete persona "${name}"? This will also delete their chat history.`)) {
             delete profiles[name];
             localStorage.setItem("rhys_profiles", JSON.stringify(profiles));
+            // Also delete their specific history bucket
+            localStorage.removeItem("history_" + name);
+            
             updateProfileList();
+            location.reload(); // Reset to clean slate
         }
     }
 
@@ -237,15 +284,16 @@ Role: Cassey's romantic companion, anchor, and protector.`;
     }
 
     function createMessageRowHTML(text, type, timestamp) {
-        // Dynamic Name based on role? For now, we keep it simple.
-        const name = type === 'user' ? 'Cassey' : 'Companion'; 
-        const avatarSrc = type === 'user' ? 'user.png' : 'rhys.png';
+        // NEW: Use the dynamic variables instead of hardcoded strings
+        const name = type === 'user' ? 'Cassey' : currentBotName; 
+        const avatarSrc = type === 'user' ? 'user.png' : currentAvatar;
+        
         const parsedText = marked.parse(text);
         
         return `
             <div class="meta">${name} • ${timestamp}</div>
             <div class="content-group">
-                <img src="${avatarSrc}" class="avatar">
+                <img src="${avatarSrc}" class="avatar" onerror="this.src='rhys.png'">
                 <div class="bubble">${parsedText}</div>
             </div>
         `;
@@ -263,14 +311,17 @@ Role: Cassey's romantic companion, anchor, and protector.`;
         const input = document.getElementById('user-input');
         const text = input.value;
         if (text.trim() === "") return;
-        if (!currentKey) { alert("Please set your API Key in Settings (⚙️)"); return; }
+        if (!currentKey) { alert("Please set your API Key!"); return; }
 
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        // Show User Message
         addMessageRow(text, 'user', timestamp);
         conversationHistory.push({ role: "user", content: text, timestamp: timestamp });
-        saveHistory();
+        saveHistory(); // Save to current profile bucket
         input.value = "";
 
+        // Create Placeholder
         const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const placeholderRow = document.createElement('div');
         placeholderRow.className = 'message-row ai';
@@ -287,15 +338,14 @@ Role: Cassey's romantic companion, anchor, and protector.`;
 
             if (isGoogleKey) {
                 let cleanModel = currentModel.replace("google/", "").replace(":free", "");
-                // Handle preview tags if needed
-                if(cleanModel.includes("gemini-3")) cleanModel = "gemini-2.0-flash-exp"; // Fallback safety or use strict ID
+                if(cleanModel.includes("gemini-3")) cleanModel = "gemini-2.0-flash-exp"; 
 
                 const googleContents = conversationHistory.map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'model',
                     parts: [{ text: msg.content }]
                 }));
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${currentKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${currentKey}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -308,7 +358,7 @@ Role: Cassey's romantic companion, anchor, and protector.`;
                 aiText = data.candidates[0].content.parts[0].text;
 
             } else {
-                // OpenRouter Logic
+                // OpenRouter
                 let messagesToSend = [{ role: "system", content: finalSystemMessage }];
                 conversationHistory.forEach(msg => {
                     let role = msg.role === 'model' ? 'assistant' : msg.role;
@@ -344,26 +394,38 @@ Role: Cassey's romantic companion, anchor, and protector.`;
         document.getElementById('system-prompt').value = currentPrompt;
         document.getElementById('model-input').value = currentModel;
         document.getElementById('knowledge-base').value = currentKnowledge;
+        
+        // Load visual settings too
+        document.getElementById('bot-name-input').value = currentBotName;
+        document.getElementById('avatar-input').value = currentAvatar;
+        
         updateCount();
-        updateProfileList(); // Refresh dropdown
+        updateProfileList(); 
         settingsModal.style.display = 'flex';
     }
 
     function closeSettings() { settingsModal.style.display = 'none'; }
 
     function saveSettings() {
-        // Saves current values as "Active" settings
         currentKey = document.getElementById('settings-key').value.trim();
         currentPrompt = document.getElementById('system-prompt').value.trim();
         currentModel = document.getElementById('model-input').value.trim();
         currentKnowledge = document.getElementById('knowledge-base').value.trim();
+        
+        // NEW: Save visual settings
+        currentBotName = document.getElementById('bot-name-input').value.trim();
+        currentAvatar = document.getElementById('avatar-input').value.trim();
 
         if (currentKey) localStorage.setItem("rhys_api_key", currentKey);
         localStorage.setItem("rhys_system_prompt", currentPrompt);
         localStorage.setItem("rhys_model", currentModel);
         localStorage.setItem("rhys_knowledge", currentKnowledge);
+        
+        localStorage.setItem("rhys_bot_name", currentBotName);
+        localStorage.setItem("rhys_bot_avatar", currentAvatar);
 
         closeSettings();
+        renderHistory(); // Re-render in case name/avatar changed
     }
 
     function updateCount() {
@@ -371,7 +433,11 @@ Role: Cassey's romantic companion, anchor, and protector.`;
         document.getElementById('prompt-count').innerText = len + " chars";
     }
 
-    function saveHistory() { localStorage.setItem("rhys_chat_history", JSON.stringify(conversationHistory)); }
+    // NEW: Save History to a PROFILE SPECIFIC key
+    function saveHistory() { 
+        localStorage.setItem("history_" + activeProfileName, JSON.stringify(conversationHistory)); 
+    }
+    
     function clearMemory() {
         if(confirm("Wipe chat history?")) {
             conversationHistory = [];
@@ -379,7 +445,6 @@ Role: Cassey's romantic companion, anchor, and protector.`;
             location.reload();
         }
     }
-    // Export function remains same...
     function exportChat() {
         const dataStr = JSON.stringify(conversationHistory, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
@@ -389,6 +454,7 @@ Role: Cassey's romantic companion, anchor, and protector.`;
 </script>
 </body>
 </html>
+
 
 
 
